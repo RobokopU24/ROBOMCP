@@ -23,7 +23,9 @@ Multi-Component Protocol (MCP) agent for querying some by ROBOKOP endpoints [her
 ## Example Queries
 
 What diseases are treated by Metformin?
+
 Show me nodes related to MONDO:0005148
+
 What types of relationships are connected to NCBIGene:19?
 
 ---
