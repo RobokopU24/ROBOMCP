@@ -1,8 +1,6 @@
-<<<<<<< HEAD
 # ROBOMCP
-MCP Client/Server for ROBOKOP
 =======
-# ROBOKOP MCP Agent
+##  MCP Client/Server for ROBOKOP
 
 Multi-Component Protocol (MCP) agent for querying some by ROBOKOP endpoints [here](https://robokop-automat.apps.renci.org/) using OpenAI agents-and MCP servers calling our structured tools.
 
@@ -24,12 +22,9 @@ Multi-Component Protocol (MCP) agent for querying some by ROBOKOP endpoints [her
 
 ## Example Queries
 
-"What diseases are treated by Atorvastatin?"
-
-"Show me nodes related to MONDO:0005148"
-
-"What types of relationships are connected to NCBIGene:19?"
-
+What diseases are treated by Metformin?
+Show me nodes related to MONDO:0005148
+What types of relationships are connected to NCBIGene:19?
 
 ---
 
@@ -41,4 +36,4 @@ Multi-Component Protocol (MCP) agent for querying some by ROBOKOP endpoints [her
 
 - MCP SERVER:
     - MCP Servers are started via uvx and handled using MCPServerStdio.
->>>>>>> 962a1f3 (Initial commit: ROBOMCP agent code and tools)
+
