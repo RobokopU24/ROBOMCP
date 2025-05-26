@@ -73,14 +73,18 @@ OPENAI_API_KEY=your_openai_key_here
 4. **Run the MCP Client:**
 
 ```bash
-python robokop_mcp_client.py
+ python robokop_mcp_client.py --provider openai
 ```
+Alternatively, to run the ollama-based model
 
+```bash
+ python robokop_mcp_client.py --provider ollama
+```
 ---
 
 ## Notes
 
-* Ensure the dependencies are installed and `.env` is set before running `robokop_mcp_client.py`.
+* Ensure the dependencies are installed and `.env` is set before running `python robokop_mcp_client.py --provider openai` option.
 
 ---
 

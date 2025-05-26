@@ -1,5 +1,7 @@
 import asyncio
 import json
+import argparse
+import ollama
 from typing import Optional, Any, List, Dict
 from dotenv import load_dotenv
 from contextlib import AsyncExitStack
@@ -11,52 +13,28 @@ from openai import AsyncOpenAI
 load_dotenv()
 
 
-class MCPOpenAIClient:
-    def __init__(self, model:str="gpt-4-turbo"):
-        # Initialize session and client objects
+class MCPBaseClient:
+    def __init__(self, model: str):
         self.messages: List[Dict[str, Any]] = []
         self.session: Optional[ClientSession] = None
         self.exit_stack = AsyncExitStack()
-        self.openai_client = AsyncOpenAI()
         self.model = model
-        self.stdio:Optional[Any] = None
-        self.write:Optional[Any] = None
+        self.stdio: Optional[Any] = None
+        self.write: Optional[Any] = None
 
-    async def connect_to_server(self, server_script_path: "robokop_mcp_server.py"):
-        """Connect to an MCP server
-
-        Args:
-            server_script_path: Path to the server script (.py)
-        """
-        # Configure server
-        server_params = StdioServerParameters(
-            command="python",
-            args=[server_script_path],
-            env=None
-        )
-        # Connect to server
+    async def connect_to_server(self, server_script_path: str):
+        server_params = StdioServerParameters(command="python", args=[server_script_path])
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         self.stdio, self.write = stdio_transport
         self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
-
         await self.session.initialize()
 
-        # List available tools
         response = await self.session.list_tools()
-        tools = response.tools
-        print("\nConnected to server with tools:", [tool.name for tool in tools])
-        # methods will go here
+        print("\nConnected to server with tools:", [tool.name for tool in response.tools])
 
-    async def process_query( self, query: str ) -> str:
-        """Process a query using LLM and available tools"""
-
-        self.messages.append({
-            "role": "user",
-            "content": query
-        })
-
+    async def get_available_tools(self) -> List[Dict[str, Any]]:
         tool_list = await self.session.list_tools()
-        available_tools = [{
+        return [{
             "type": "function",
             "function": {
                 "name": tool.name,
@@ -65,78 +43,92 @@ class MCPOpenAIClient:
             }
         } for tool in tool_list.tools]
 
-        # Initial openAI API call
-        response = await self.openai_client.chat.completions.create(
-            model=self.model,
-            messages=self.messages,
-            tools=available_tools,
-            tool_choice="auto"
-        )
+    async def process_query(self, query: str) -> str:
+        self.messages.append({"role": "user", "content": query})
+        tools = await self.get_available_tools()
 
-        # Process response and handle tool calls
-        message = response.choices[0].message
+        message = await self.llm_chat(self.messages, tools)
         self.messages.append(message)
-        while message.tool_calls:
+
+        while getattr(message, "tool_calls", None):
             for tool_call in message.tool_calls:
-                tool_result = await self.session.call_tool(
-                    tool_call.function.name,
-                    arguments=json.loads(tool_call.function.arguments)
-                )
+                args = tool_call.function.arguments
+                if isinstance(args, str):
+                    args = json.loads(args)
+                tool_result = await self.session.call_tool(tool_call.function.name, arguments=args)
                 self.messages.append({
                     "role": "tool",
-                    "tool_call_id": tool_call.id,
+                    "tool_call_id": getattr(tool_call, "id", None),
                     "content": tool_result.content[0].text
                 })
 
-            response = await self.openai_client.chat.completions.create(
-                model=self.model,
-                messages=self.messages,
-                tools=available_tools,
-                tool_choice="auto"
-            )
-            message = response.choices[0].message
+            message = await self.llm_chat(self.messages, tools)
             self.messages.append(message)
 
         return message.content
 
-    async def cleanup( self ):
-        """Clean up resources"""
+    async def llm_chat(self, messages: List[Dict[str, Any]], tools: List[Dict[str, Any]]):
+        raise NotImplementedError("llm_chat must be implemented by subclasses")
+
+    async def cleanup(self):
         await self.exit_stack.aclose()
 
+class MCPOpenAIClient(MCPBaseClient):
+    def __init__(self, model="gpt-4-turbo"):
+        super().__init__(model)
+        self.llm_client = AsyncOpenAI()
 
-async def main():
-    # Main Entry Point
-    client = MCPOpenAIClient()
+    async def llm_chat(self, messages, tools):
+        response = await self.llm_client.chat.completions.create(
+            model=self.model,
+            messages=messages,
+            tools=tools,
+            tool_choice="auto"
+        )
+        return response.choices[0].message
+
+
+class MCPOllamaClient(MCPBaseClient):
+    def __init__(self, model="llama3.2"):
+        super().__init__(model)
+
+    async def llm_chat(self, messages, tools):
+        response = ollama.chat(
+            model=self.model,
+            messages=messages,
+            tools=tools
+        )
+        return response.message
+
+async def run_client(client):
     try:
         await client.connect_to_server("robokop_mcp_server.py")
-
         print("\nMCP Client Started!")
         print("Type your queries or 'quit' to exit or 'reset' chat context.")
-
         while True:
-            try:
-                query = input("\nQuery: ").strip()
-
-                if query.lower() in ['quit', 'end', 'exit', 'bye']:
-                    print("\nGoodBye!")
-                    break
-
-                if query.lower() == 'reset':
-                    client.messages=[]
-                    print("\nContext reset.")
-                    continue
-
-                response = await client.process_query(query)
-                print(f"\nResponse: {response}")
-
-            except Exception as e:
-                print(f"\nError: {str(e)}")
-
+            query = input("\nQuery: ").strip()
+            if query.lower() in {'quit', 'exit', 'bye', 'q', 'x'}:
+                print("\nGoodbye!")
+                break
+            if query.lower() == 'reset':
+                client.messages.clear()
+                print("\nContext reset.")
+                continue
+            response = await client.process_query(query)
+            print(f"\nResponse: {response}")
+    except Exception as e:
+        print(f"\nError: {e}")
     finally:
         await client.cleanup()
 
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--provider", choices=["openai", "ollama"], default="ollama", help="Choose the LLM provider")
+    args = parser.parse_args()
+
+    client = MCPOpenAIClient() if args.provider == "openai" else MCPOllamaClient()
+    asyncio.run(run_client(client))
 
 
 
