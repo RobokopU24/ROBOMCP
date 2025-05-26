@@ -1,41 +1,98 @@
 # ROBOMCP
-=======
-##  MCP Client/Server for ROBOKOP
 
-Multi-Component Protocol (MCP) agent for querying some by ROBOKOP endpoints [here](https://robokop-automat.apps.renci.org/) using OpenAI agents-and MCP servers calling our structured tools.
+## MCP Client/Server for ROBOKOP
+
+Multi-Component Protocol (MCP) agent for querying ROBOKOP endpoints [here](https://robokop-automat.apps.renci.org/) using OpenAI agents and MCP servers that call structured tools.
 
 ---
 
 ## Available Tools
 
-
 | Tool                                                      | Description                                                                            |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| `get_normalized_curie(text)`                              | Converts a biomedical name to a normalized CURIE.                                      |
-| `get_current_nodes(curie)`                                | Retrieves detailed node info from ROBOKOP.                                             |
-| `get_current_edges(curie, category=None, predicate=None)` | Fetches edges connected to a node, optionally filtered by category/predicate.          |
-| `get_edge_summary(curie)`                                 | Returns a summary of all predicates and attached node types + counts for a given node. |
-
-
+|-----------------------------------------------------------|----------------------------------------------------------------------------------------|
+| `get_normalized_curie(text)`                              | Converts a biomedical name to a normalized CURIE.                                     |
+| `get_current_nodes(curie)`                                | Retrieves detailed node info from ROBOKOP.                                            |
+| `get_current_edges(curie, category=None, predicate=None)` | Fetches edges connected to a node, optionally filtered by category or predicate.      |
+| `get_edge_summary(curie)`                                 | Returns a summary of all predicates and connected node types + counts for a given node.|
 
 ---
 
 ## Example Queries
 
-What diseases are treated by Metformin?
+- What diseases are treated by Metformin?  
+- Show me nodes related to MONDO:0005148  
+- What types of relationships are connected to NCBIGene:19?  
+- What drugs treat MONDO:0005148?  
+- Tell me more about the node MONDO:0005148 and MONDO:0004979  
+- How many diseases is ABCA1 related to? List those diseases.  
+- What is the CURIE ID for Alzheimer Disease?  
+- What are the various kinds of edges connected to CHEBI:135285?
 
-Show me nodes related to MONDO:0005148
+---
 
-What types of relationships are connected to NCBIGene:19?
+## Running on Claude Desktop
+
+1. Open `claude_desktop_config.json` located at  
+   `~/Library/Application\ Support/Claude/claude_desktop_config.json` in any text editor.  
+   - If it doesn't exist, create it manually.
+2. Edit the file to include the appropriate path to your `robokop_mcp_server.py`.
+3. Save the file and restart Claude Desktop.
+4. Once restarted, you should see available servers and tools under each server.
+5. You can expand each tool using the arrows.
+
+![img_1.png](img_1.png)  
+![img_2.png](img_2.png)
+
+---
+
+## Running with OpenAI
+
+1. **Clone the Repository:**
+
+```bash
+git clone https://github.com/RobokopU24/ROBOMCP.git
+cd ROBOMCP
+````
+
+2. **Set Up the Environment:**
+
+```bash
+uv venv
+source .venv/bin/activate
+
+# Install dependencies from requirements
+uv pip install -r requirements.txt
+```
+
+3. **Create a `.env` File:**
+
+```dotenv
+OPENAI_API_KEY=your_openai_key_here
+```
+
+4. **Run the MCP Client:**
+
+```bash
+python robokop_mcp_client.py
+```
+
+---
+
+## Notes
+
+* Ensure the dependencies are installed and `.env` is set before running `robokop_mcp_client.py`.
 
 ---
 
 ## Development Notes
-- TOOLS:
-    - Currently, tools are :
-        - defined in the ```robokop_mcp_server.py``` module using ```@function_tool``` decorators from the openai-agents framework.
-        - added to a list of tools that the mcp agent can use in ```main.py```
 
-- MCP SERVER:
-    - MCP Servers are started via uvx and handled using MCPServerStdio.
+* **Tools:**
 
+  * Defined using `@mcp.tool()` decorators in `robokop_mcp_server.py`.
+  * Registered with the MCP agent in the same file.
+
+* **MCP Server:**
+
+  * MCP servers are launched from the client.
+
+```

@@ -1,7 +1,12 @@
 [project]
 name = "robokopmcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "ROBOKOP CLIENT/SERVER MCP"
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.9.0",
+    "openai",
+    "python-dotenv==1.1.0"
+]

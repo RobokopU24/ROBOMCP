@@ -1,4 +1,5 @@
-openai-agents
+mcp[cli]
+openai
 aiohttp==3.11.18
 httpx==0.28.1
 python-dotenv==1.1.0
