@@ -8,5 +8,17 @@ dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.9.0",
     "openai",
-    "python-dotenv==1.1.0"
+    "python-dotenv==1.1.0",
+    "pytest"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest-asyncio"
+]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+markers = [
+    "asyncio: mark test as async"
 ]

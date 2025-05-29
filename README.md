@@ -45,7 +45,7 @@ Multi-Component Protocol (MCP) agent for querying ROBOKOP endpoints [here](https
 
 ---
 
-## Running with OpenAI
+## Other Agents
 
 1. **Clone the Repository:**
 
@@ -66,20 +66,29 @@ uv pip install -r requirements.txt
 
 3. **Create a `.env` File:**
 
+### Running with OpenAI
+1.  Add to the `.env` File: 
 ```dotenv
 OPENAI_API_KEY=your_openai_key_here
 ```
 
-4. **Run the MCP Client:**
+2. Run the Client, specifying the provider:
 
 ```bash
  python robokop_mcp_client.py --provider openai
 ```
-Alternatively, to run the ollama-based model
+
+### Running with ollama-based model
+1. Run the Client, specifying the provider:
 
 ```bash
  python robokop_mcp_client.py --provider ollama
 ```
+- example ollama model:
+    - llama3.2 (default)
+    - qwen3:latest  
+    - mistral:latest
+    * remember to do this in the terminal: ollama pull (the model you chose eg qwen3:latest)
 ---
 
 ## Notes
@@ -99,4 +108,19 @@ Alternatively, to run the ollama-based model
 
   * MCP servers are launched from the client.
 
+## Robokop Neo4j-Servers tools
+
+We enabled [Neo4j](https://github.com/neo4j-contrib/mcp-neo4j/tree/main/servers/mcp-neo4j-cypher)-backed tools in RobokopMCP. To run:
+
+1. Run ```uv pip install mcp-neo4j-cypher``` to install the dependency
+2. Use the ```.env``` to set your neo4j password. eg\
+   ```NEO4J_PASSWORD=hereisasamplepasswordlineina.envfile```
+3. Run this in the terminal:
+```bash
+python robokop_mcp_client.py \
+  --provider openai \
+  --server mcp-neo4j-cypher \
+  --neo4j-uri bolt://robokopkg.renci.org:7687 \
+  --neo4j-db neo4j
 ```
+

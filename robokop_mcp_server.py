@@ -7,8 +7,6 @@ mcp = FastMCP(name="roboMCP",
               port=8050)
 
 
-
-
 # ----------- tools -----------
 async def normalized_curie(url: str) -> str | None:
     try:

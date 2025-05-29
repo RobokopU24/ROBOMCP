@@ -1,7 +1,6 @@
 import asyncio
 import json
 import argparse
-import ollama
 from typing import Optional, Any, List, Dict
 from dotenv import load_dotenv
 from contextlib import AsyncExitStack
@@ -9,6 +8,7 @@ from contextlib import AsyncExitStack
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
+from ollama import AsyncClient
 from openai import AsyncOpenAI
 load_dotenv()
 
@@ -22,13 +22,13 @@ class MCPBaseClient:
         self.stdio: Optional[Any] = None
         self.write: Optional[Any] = None
 
-    async def connect_to_server(self, server_script_path: str):
-        server_params = StdioServerParameters(command="python", args=[server_script_path])
+    async def connect_to_server(self, command: str = "python", args: List[str] = [],
+                                 env: Optional[Dict[str, str]] = None):
+        server_params = StdioServerParameters(command=command, args=args, env=env)
         stdio_transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
         self.stdio, self.write = stdio_transport
         self.session = await self.exit_stack.enter_async_context(ClientSession(self.stdio, self.write))
         await self.session.initialize()
-
         response = await self.session.list_tools()
         print("\nConnected to server with tools:", [tool.name for tool in response.tools])
 
@@ -73,6 +73,7 @@ class MCPBaseClient:
     async def cleanup(self):
         await self.exit_stack.aclose()
 
+
 class MCPOpenAIClient(MCPBaseClient):
     def __init__(self, model="gpt-4-turbo"):
         super().__init__(model)
@@ -91,18 +92,34 @@ class MCPOpenAIClient(MCPBaseClient):
 class MCPOllamaClient(MCPBaseClient):
     def __init__(self, model="llama3.2"):
         super().__init__(model)
+        self.llm_client = AsyncClient()
 
     async def llm_chat(self, messages, tools):
-        response = ollama.chat(
+        response = await self.llm_client.chat(
             model=self.model,
             messages=messages,
             tools=tools
         )
-        return response.message
+        return response['message']  # Adjust if format differs
+
 
 async def run_client(client):
     try:
-        await client.connect_to_server("robokop_mcp_server.py")
+        if args.server == "mcp-neo4j-cypher":
+            await client.connect_to_server(
+                command="mcp-neo4j-cypher",
+                args=[],
+                env={
+                    "NEO4J_URI": args.neo4j_uri or "bolt://robokopkg.renci.org:7687",
+                    "NEO4J_DATABASE": args.neo4j_db or "neo4j"
+                }
+            )
+        else:
+            await client.connect_to_server(
+                command="python",
+                args=[args.server]
+            )
+
         print("\nMCP Client Started!")
         print("Type your queries or 'quit' to exit or 'reset' chat context.")
         while True:
@@ -125,6 +142,10 @@ async def run_client(client):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--provider", choices=["openai", "ollama"], default="ollama", help="Choose the LLM provider")
+    parser.add_argument("--server", default="robokop_mcp_server.py", help="Path to server script or tool command")
+    parser.add_argument("--neo4j-uri", help="NEO4J URI if using mcp-neo4j-cypher")
+    parser.add_argument("--neo4j-db", help="NEO4J database name if using mcp-neo4j-cypher")
+
     args = parser.parse_args()
 
     client = MCPOpenAIClient() if args.provider == "openai" else MCPOllamaClient()
